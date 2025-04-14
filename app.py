@@ -9,7 +9,15 @@ import html as ihtml
 
 # --- Google Sheets Setup ---
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-creds = ServiceAccountCredentials.from_json_keyfile_name("gspread_key.json", scope)
+import json
+
+try:
+    # In Streamlit Cloud: load from secrets
+    service_account_info = st.secrets["gcp_service_account"]
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(service_account_info, scope)
+except:
+    # Local development fallback
+    creds = ServiceAccountCredentials.from_json_keyfile_name("gspread_key.json", scope)
 client = gspread.authorize(creds)
 sheet = client.open("IB_QA_Bank").sheet1
 
