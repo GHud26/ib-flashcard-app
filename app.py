@@ -7,23 +7,26 @@ import base64
 import os
 import html as ihtml
 
-# --- Google Sheets Setup ---
-scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 import json
 
-try:
-    # In Streamlit Cloud: load from secrets
-    service_account_info = st.secrets["gcp_service_account"]
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(service_account_info, scope)
-except:
-    # Local development fallback
-    creds = ServiceAccountCredentials.from_json_keyfile_name("gspread_key.json", scope)
-client = gspread.authorize(creds)
-sheet = client.open("IB_QA_Bank").sheet1
+# --- Optimized Google Sheets + Data Load ---
+@st.cache_resource
+def get_sheet():
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    if "gcp_service_account" in st.secrets:
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(st.secrets["gcp_service_account"], scope)
+    else:
+        creds = ServiceAccountCredentials.from_json_keyfile_name("gspread_key.json", scope)
+    client = gspread.authorize(creds)
+    return client.open("IB_QA_Bank").sheet1
 
-# --- Load Data ---
-data = sheet.get_all_records()
-df = pd.DataFrame(data)
+@st.cache_data(ttl=3600)  # cache for 1 hour
+def load_flashcards(sheet):
+    return pd.DataFrame(sheet.get_all_records())
+
+sheet = get_sheet()
+df = load_flashcards(sheet)
+
 
 # --- Clean column names ---
 df.columns = df.columns.astype(str).str.strip().str.lower()
@@ -139,15 +142,24 @@ with col1:
 with col2:
     selected_difficulties = st.multiselect("Filter by Difficulty:", options=difficulties, default=difficulties)
 
-# --- Filtered Data ---
-filtered_df = df[
-    df['category'].isin(selected_categories) &
-    df['difficulty'].isin(selected_difficulties)
-].reset_index(drop=True)
+@st.cache_data
+def filter_flashcards(df, selected_categories, selected_difficulties, shuffle):
+    filtered = df[
+        df['category'].isin(selected_categories) &
+        df['difficulty'].isin(selected_difficulties)
+    ].reset_index(drop=True)
+
+    if shuffle:
+        filtered = filtered.sample(frac=1).reset_index(drop=True)
+
+    return filtered
+
+filtered_df = filter_flashcards(df, selected_categories, selected_difficulties, shuffle)
 
 if filtered_df.empty:
     st.warning("No flashcards match the selected filters.")
     st.stop()
+
 
 st.markdown(f"### Showing {len(filtered_df)} Flashcards")
 
@@ -164,6 +176,7 @@ if st.session_state.is_admin:
             if submitted:
                 if new_question and new_answer and new_category and new_difficulty:
                     sheet.append_row([new_question, new_answer, new_category, new_difficulty])
+                    st.cache_data.clear()  # Clear cached sheet data
                     st.success("Flashcard added successfully! Please refresh to view.")
                 else:
                     st.error("Please complete all fields before submitting.")
