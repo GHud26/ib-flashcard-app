@@ -7,27 +7,19 @@ import base64
 import os
 import html as ihtml
 
-import streamlit as st
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-import json
-
 # --- Google Sheets Setup ---
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+import json
 
-if "gcp_service_account" in st.secrets:
-    # 🟢 Running on Streamlit Cloud — use secrets
+try:
+    # In Streamlit Cloud: load from secrets
     service_account_info = st.secrets["gcp_service_account"]
     creds = ServiceAccountCredentials.from_json_keyfile_dict(service_account_info, scope)
-    st.info("✅ Using Streamlit secrets for Google Sheets access.")
-else:
-    # 🟡 Running locally — use file
+except:
+    # Local development fallback
     creds = ServiceAccountCredentials.from_json_keyfile_name("gspread_key.json", scope)
-    st.warning("⚠️ Using local credentials from gspread_key.json")
-
 client = gspread.authorize(creds)
 sheet = client.open("IB_QA_Bank").sheet1
-
 
 # --- Load Data ---
 data = sheet.get_all_records()
