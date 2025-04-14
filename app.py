@@ -102,7 +102,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- Logo ---
-logo_path = os.path.expanduser("~/Flashcard_/GWS_Blue_Text_Transparent Logo.png")
+logo_path = os.path.expanduser("~/Flashcard_App/GWS_Blue_Text_Transparent Logo.png")
 
 def get_image_base64(image_path):
     with open(image_path, "rb") as f:
