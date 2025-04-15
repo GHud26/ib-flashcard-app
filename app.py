@@ -22,11 +22,8 @@ client = gspread.authorize(creds)
 sheet = client.open("IB_QA_Bank").sheet1
 
 # --- Load Data ---
-@st.cache_data(ttl=600)  # cache for 10 minutes
-def load_sheet_data():
-    return pd.DataFrame(sheet.get_all_records())
-
-df = load_sheet_data()
+data = sheet.get_all_records()
+df = pd.DataFrame(data)
 
 # --- Clean column names ---
 df.columns = df.columns.astype(str).str.strip().str.lower()
@@ -166,10 +163,20 @@ if st.session_state.is_admin:
 
             if submitted:
                 if new_question and new_answer and new_category and new_difficulty:
-                    sheet.append_row([new_question, new_answer, new_category, new_difficulty])
+                    # Construct row to start at column B (with column A blank)
+                    new_row = ["", new_category, new_difficulty, new_question, new_answer]
+
+                    # Determine the next available row based on non-empty values in column B
+                    col_b = sheet.col_values(2)  # Column B = Category
+                    next_row = len(col_b) + 1
+
+                    # Insert the row starting from column B
+                    sheet.insert_row(new_row, next_row)
+
                     st.success("Flashcard added successfully! Please refresh to view.")
                 else:
                     st.error("Please complete all fields before submitting.")
+
 
 # --- Shuffle ---
 shuffle = st.checkbox("Randomize Card Order", key="shuffle_toggle", value=False)
