@@ -129,7 +129,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- Logo ---
-logo_path = os.path.expanduser("~/Flashcard_App/GWS_Blue_Text_Transparent Logo.png")
+logo_path = "GWS_Blue_Text_Transparent Logo.png"
 
 @st.cache_data
 def get_image_base64_cached(image_path):
